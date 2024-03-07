@@ -1,0 +1,102 @@
+version: '3.8'
+services:
+  # api:
+  #   container_name: getway
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/api/Dockerfile
+  #     target: development
+  #   command: yarn start:dev api
+  #   env_file:
+  #     - ./apps/api/.env
+  #   depends_on:
+  #     - mongodb-primary
+  #     - mongodb-secondary
+  #     - mongodb-arbiter
+  #   volumes:
+  #     - .:/usr/src/app
+  #     - /usr/src/app/node_modules
+  #   ports:
+  #     - 3000:3000
+
+  # orders:
+  #   container_name: orders
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/orders/Dockerfile
+  #     target: development
+  #   command: yarn start:dev orders
+  #   env_file:
+  #     - ./apps/orders/.env
+  #   depends_on:
+  #     - mongodb-primary
+  #     - mongodb-secondary
+  #     - mongodb-arbiter
+  #   volumes:
+  #     - .:/usr/src/app
+  #     - /usr/src/app/node_modules
+  #   ports:
+  #     - 3000:3000
+
+  rabbitmq:
+    container_name: 'mc-rmq'
+    image: rabbitmq:3.12-management
+    env_file:
+      - .env
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - /var/lib/rabbitmq
+
+  mongo:
+    container_name: 'mc-mq-mongo'
+    image: mongo:7.0
+    ports:
+      - 27018:27017
+
+  mongoExpress:
+    container_name: 'mc-mq-mx'
+    image: mongo-express:1-20
+    ports:
+      - 8081:8081
+    env_file:
+      - .env
+
+  mongodb-primary:
+    image: docker.io/bitnami/mongodb:7.0
+    environment:
+      - MONGODB_ADVERTISED_HOSTNAME=mongodb-primary
+      - MONGODB_REPLICA_SET_MODE=primary
+      - MONGODB_ROOT_PASSWORD=password123
+      - MONGODB_REPLICA_SET_KEY=replicasetkey123
+    volumes:
+      - 'mongodb_master_data:/bitnami/mongodb'
+    ports:
+      - 27017:27017
+
+  mongodb-secondary:
+    image: docker.io/bitnami/mongodb:7.0
+    depends_on:
+      - mongodb-primary
+    environment:
+      - MONGODB_ADVERTISED_HOSTNAME=mongodb-secondary
+      - MONGODB_REPLICA_SET_MODE=secondary
+      - MONGODB_INITIAL_PRIMARY_HOST=mongodb-primary
+      - MONGODB_INITIAL_PRIMARY_ROOT_PASSWORD=password123
+      - MONGODB_REPLICA_SET_KEY=replicasetkey123
+
+  mongodb-arbiter:
+    image: docker.io/bitnami/mongodb:7.0
+    depends_on:
+      - mongodb-primary
+    environment:
+      - MONGODB_ADVERTISED_HOSTNAME=mongodb-arbiter
+      - MONGODB_REPLICA_SET_MODE=arbiter
+      - MONGODB_INITIAL_PRIMARY_HOST=mongodb-primary
+      - MONGODB_INITIAL_PRIMARY_ROOT_PASSWORD=password123
+      - MONGODB_REPLICA_SET_KEY=replicasetkey123
+
+volumes:
+  mongodb_master_data:
+    driver: local
